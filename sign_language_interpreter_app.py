@@ -119,12 +119,22 @@ def main():
 
         if updated:
             gesture_message = ", ".join(detected_gestures_list)
-            st.write(f"Detected Gestures: {', '.join(detected_gestures_list)}")
+            
+            # Display detected gestures in the chat interface
+            with st.chat_message("user"):
+                st.write(f"Detected Gestures: {gesture_message}")
+
+            # Prepare tweaks for Langflow API
             tweaks = TWEAKS.copy()  # Create a copy of the default tweaks
             tweaks["Prompt-miH9T"]["detected_word"] = gesture_message
+
+            # Get chatbot response from Langflow API
             response = run_flow(gesture_message, tweaks=tweaks)
             chatbot_response = extract_message(response)
-            st.write(f"Chatbot Response: {chatbot_response}")
+
+            # Display chatbot response in the chat interface
+            with st.chat_message("assistant"):
+                st.write(chatbot_response)
 
     # Release camera
     camera.release()
