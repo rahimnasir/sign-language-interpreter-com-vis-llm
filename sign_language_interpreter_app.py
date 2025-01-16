@@ -70,11 +70,13 @@ def main():
     st.title("Sign Language Interpreter Bot")
     st.write("Please allow for webcam access first before using this app.")
 
-    run = True
+    run = st.checkbox("Run")
     FRAME_WINDOW = st.image([])
     gesture_display = st.empty()  # Placeholder for displaying detected gestures
     camera = cv2.VideoCapture(0)
-
+    ret, frame = camera.read()
+    if not ret:
+        st.error("Failed to capture frame")
     # Track detected gestures in the order they are detected
     detected_gestures_list = []
 
