@@ -80,7 +80,10 @@ def main():
 
     while run:
         _, frame = camera.read()
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if frame is not None and frame.size > 0:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        else:
+            st.error("No frame received or frame is empty")
 
         # Use YOLO to detect objects
         results = best_sign_language_model.predict(source=frame, stream=True)  # Use `frame` as input
