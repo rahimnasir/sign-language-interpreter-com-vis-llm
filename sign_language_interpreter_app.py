@@ -74,9 +74,22 @@ def main():
     FRAME_WINDOW = st.image([])
     gesture_display = st.empty()  # Placeholder for displaying detected gestures
     camera = cv2.VideoCapture(0)
+    
+    if not camera.isOpened():
+        st.error("Failed to open camera.")
+        return  # Exit gracefully
+
+    retries = 3  # Retry capturing frame
     ret, frame = camera.read()
+    while not ret and retries > 0:
+        st.warning("Retrying to capture the frame...")
+        ret, frame = camera.read()
+        retries -= 1
+
     if not ret:
-        st.error("Failed to capture frame")
+        st.error("Failed to capture frame after retries.")
+        return  # Exit gracefully
+
     # Track detected gestures in the order they are detected
     detected_gestures_list = []
 
@@ -95,43 +108,26 @@ def main():
         for result in results:
             for box in result.boxes:
                 if box.conf >= 0.4: # Confidence score that can be adjusted to accept or reject gesture that is not confident enough
-                    # The values can be adjusted ranging from 0 to 1
-                    # Get the class name for the current box
                     gesture_name = result.names[int(box.cls)]
-                    # Add gesture to the list if not already present
                     if gesture_name not in detected_gestures_list:
                         detected_gestures_list.append(gesture_name)
                         updated = True
 
-            # Draw bounding boxes on the frame (optional)
             frame = result.plot()  # This draws boxes on the frame
 
-        # Update Streamlit image and display the gesture list
         FRAME_WINDOW.image(frame)
 
-        # Inside your main loop, where the list is updated
         if updated:
-            
-            # Convert detected_gestures_list to a string for the chatbot
-            gesture_message = ", ".join(detected_gestures_list)  # Convert list to plain sentence
-            
-            # Display the detected gestures
-            st.write(f"Detected Gestures: {', '.join(detected_gestures_list)}")  # Display the list of words
-            
-            # Set the message for Langflow's Prompt
+            gesture_message = ", ".join(detected_gestures_list)
+            st.write(f"Detected Gestures: {', '.join(detected_gestures_list)}")
             tweaks = TWEAKS.copy()  # Create a copy of the default tweaks
-            tweaks["Prompt-miH9T"]["detected_word"] = gesture_message  # Set the message in the prompt
-
-            # Run the Langflow API with the updated tweaks
+            tweaks["Prompt-miH9T"]["detected_word"] = gesture_message
             response = run_flow(gesture_message, tweaks=tweaks)
-
-            # Extract and display the chatbot response
             chatbot_response = extract_message(response)
             st.write(f"Chatbot Response: {chatbot_response}")
 
-    # Release camera and cleanup
+    # Release camera
     camera.release()
-    #cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
