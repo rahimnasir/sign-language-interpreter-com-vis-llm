@@ -5,7 +5,8 @@ import logging
 from typing import Optional
 from ultralytics import YOLO
 from PIL import Image
-import cv2
+import av
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 
 # Constants
 BASE_API_URL = "http://127.0.0.1:7860"
@@ -23,11 +24,11 @@ logging.basicConfig(level=logging.INFO)
 
 # Function to run the Langflow API
 def run_flow(message: str,
-  endpoint: str = FLOW_ID,
-  output_type: str = "chat",
-  input_type: str = "chat",
-  tweaks: Optional[dict] = None,
-  api_key: Optional[str] = None) -> dict:
+             endpoint: str = FLOW_ID,
+             output_type: str = "chat",
+             input_type: str = "chat",
+             tweaks: Optional[dict] = None,
+             api_key: Optional[str] = None) -> dict:
     """
     Run a flow with a given message and optional tweaks.
     """
@@ -63,81 +64,60 @@ def extract_message(response: dict) -> str:
         return "No valid message found in response."
 
 # Load the YOLO model
-TRAINED_MODEL_PATH = "best.pt"  # Replace with your actual model path
+TRAINED_MODEL_PATH = "best.pt"  # Path to your YOLO model in the repository
 best_sign_language_model = YOLO(TRAINED_MODEL_PATH)
 
-def main():
-    st.title("Sign Language Interpreter Bot")
-    st.write("Please allow for webcam access first before using this app.")
+class SignLanguageProcessor(VideoProcessorBase):
+    def __init__(self):
+        self.detected_gestures_list = []
 
-    run = st.checkbox("Run")
-    FRAME_WINDOW = st.image([])
-    gesture_display = st.empty()  # Placeholder for displaying detected gestures
-    camera = cv2.VideoCapture(0)
-    
-    if not camera.isOpened():
-        st.error("Failed to open camera.")
-        return  # Exit gracefully
-
-    retries = 3  # Retry capturing frame
-    ret, frame = camera.read()
-    while not ret and retries > 0:
-        st.warning("Retrying to capture the frame...")
-        ret, frame = camera.read()
-        retries -= 1
-
-    if not ret:
-        st.error("Failed to capture frame after retries.")
-        return  # Exit gracefully
-
-    # Track detected gestures in the order they are detected
-    detected_gestures_list = []
-
-    while run:
-        _, frame = camera.read()
-        if frame is not None and frame.size > 0:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        else:
-            st.error("No frame received or frame is empty")
-
-        # Use YOLO to detect objects
-        results = best_sign_language_model.predict(source=frame, stream=True)  # Use `frame` as input
-
-        updated = False  # To check if the list was updated in this frame
+    def recv(self, frame: av.VideoFrame):
+        frame = frame.to_ndarray(format="bgr24")
+        results = best_sign_language_model.predict(source=frame, stream=True)
+        updated = False
 
         for result in results:
             for box in result.boxes:
-                if box.conf >= 0.4: # Confidence score that can be adjusted to accept or reject gesture that is not confident enough
+                if box.conf >= 0.4:  # Adjust confidence threshold
                     gesture_name = result.names[int(box.cls)]
-                    if gesture_name not in detected_gestures_list:
-                        detected_gestures_list.append(gesture_name)
+                    if gesture_name not in self.detected_gestures_list:
+                        self.detected_gestures_list.append(gesture_name)
                         updated = True
 
-            frame = result.plot()  # This draws boxes on the frame
+            frame = result.plot()
 
-        FRAME_WINDOW.image(frame)
-
+        # Display detected gestures
         if updated:
-            gesture_message = ", ".join(detected_gestures_list)
-            
-            # Display detected gestures in the chat interface
-            with st.chat_message("user"):
-                st.write(f"Detected Gestures: {gesture_message}")
-
-            # Prepare tweaks for Langflow API
-            tweaks = TWEAKS.copy()  # Create a copy of the default tweaks
+            gesture_message = ", ".join(self.detected_gestures_list)
+            tweaks = TWEAKS.copy()
             tweaks["Prompt-miH9T"]["detected_word"] = gesture_message
-
-            # Get chatbot response from Langflow API
             response = run_flow(gesture_message, tweaks=tweaks)
             chatbot_response = extract_message(response)
+            st.session_state.gestures = gesture_message
+            st.session_state.response = chatbot_response
 
-            # Display chatbot response in the chat interface
-            with st.chat_message("assistant"):
-                st.write(chatbot_response)
+        return av.VideoFrame.from_ndarray(frame, format="bgr24")
 
-    # Release camera
-    camera.release()
+def main():
+    st.title("Sign Language Interpreter Bot")
+    st.write("This app uses a YOLO model to detect sign language gestures.")
+
+    if "gestures" not in st.session_state:
+        st.session_state.gestures = ""
+    if "response" not in st.session_state:
+        st.session_state.response = ""
+
+    webrtc_streamer(
+        key="sign-language",
+        video_processor_factory=SignLanguageProcessor,
+        media_stream_constraints={"video": True, "audio": False},
+    )
+
+    st.write("### Detected Gestures")
+    st.write(st.session_state.gestures)
+
+    st.write("### Chatbot Response")
+    st.write(st.session_state.response)
 
 if __name__ == "__main__":
     main()
