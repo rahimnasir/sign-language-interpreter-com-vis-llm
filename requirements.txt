@@ -1,3 +1,4 @@
-ultralytics
+streamlit-webrtc
 opencv-python-headless
-
+ultralytics
+requests
