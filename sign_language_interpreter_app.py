@@ -131,7 +131,7 @@ def main():
 
     # Release camera and cleanup
     camera.release()
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
