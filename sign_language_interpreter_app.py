@@ -70,24 +70,29 @@ def main():
     st.title("Sign Language Interpreter Bot")
     st.write("Please allow for webcam access first before using this app.")
 
-    run = st.checkbox("Run")
-    FRAME_WINDOW = st.image([])
+    # Sidebar controls
+    st.sidebar.header("Camera Controls")
+    run = st.sidebar.checkbox("Run", value=False)
+    FRAME_WINDOW = st.sidebar.image([])
+
+    # Main interface placeholders
     gesture_display = st.empty()  # Placeholder for displaying detected gestures
+
+    # Open camera
     camera = cv2.VideoCapture(0)
-    
     if not camera.isOpened():
-        st.error("Failed to open camera.")
+        st.sidebar.error("Failed to open camera.")
         return  # Exit gracefully
 
     retries = 3  # Retry capturing frame
     ret, frame = camera.read()
     while not ret and retries > 0:
-        st.warning("Retrying to capture the frame...")
+        st.sidebar.warning("Retrying to capture the frame...")
         ret, frame = camera.read()
         retries -= 1
 
     if not ret:
-        st.error("Failed to capture frame after retries.")
+        st.sidebar.error("Failed to capture frame after retries.")
         return  # Exit gracefully
 
     # Track detected gestures in the order they are detected
@@ -98,7 +103,7 @@ def main():
         if frame is not None and frame.size > 0:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         else:
-            st.error("No frame received or frame is empty")
+            st.sidebar.error("No frame received or frame is empty")
 
         # Use YOLO to detect objects
         results = best_sign_language_model.predict(source=frame, stream=True)  # Use `frame` as input
@@ -119,7 +124,7 @@ def main():
 
         if updated:
             gesture_message = ", ".join(detected_gestures_list)
-            
+
             # Display detected gestures in the chat interface
             with st.chat_message("user"):
                 st.write(f"Detected Gestures: {gesture_message}")
