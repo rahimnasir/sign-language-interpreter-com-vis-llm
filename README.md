@@ -2,6 +2,16 @@
 
 For the photo detection version with deployment to the Streamlit Cloud, please click this [link](https://github.com/rahimnasir/sign-language-interpreter-photo) to go to the repository.
 
+## Introduction
+
+This innovative project is designed to bridge the communication gap between individuals using sign language and those who do not understand it. By leveraging cutting-edge computer vision technologies like YOLO (You Only Look Once), this system interprets sign language gestures in real-time, converting them into readable text or spoken language.
+
+Key Features:
+- Real-Time Interpretation: Translates sign language gestures instantly, ensuring seamless communication.
+- Gesture Support: Recognizes 18 basic English word.
+- Medium Accuracy: Powered by the YOLO model, known for its speed and precision in object detection. May misdetected certain gestures.
+- Chatbot Integration: Provide feedback based on sequentially detected words to interpret the sign language. Give advice on how to approach the deaf person based on the gestures.
+
 ## Instruction
 1. Clone the repository
 ```
